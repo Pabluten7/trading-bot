@@ -1,98 +1,63 @@
 """
-startup.py
-==========
+Application startup compatibility layer.
 
-Inicialización del sistema.
-
-Este módulo es responsable de arrancar todos los servicios necesarios
-para que el bot pueda funcionar correctamente.
-
-NO contiene lógica de trading.
-NO ejecuta estrategias.
-NO realiza cálculos.
-
-Únicamente coordina el inicio de la aplicación.
+The SystemController owns the actual application lifecycle.
+This module provides a simple startup interface for the entry point
+and for future application runners.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.config.settings import settings
+from app.core.system_controller import (
+    SystemController,
+    SystemState,
+    system_controller,
+)
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class StartupStatus:
-    """Estado del proceso de inicialización."""
+    """Result of the application startup process."""
 
-    configuration_loaded: bool = False
-    logging_ready: bool = False
-    database_ready: bool = False
-    license_ready: bool = False
-    scheduler_ready: bool = False
-    completed: bool = False
+    completed: bool
+    state: SystemState
 
 
 class StartupManager:
     """
-    Responsable del arranque completo del sistema.
+    Compatibility facade for application startup.
+
+    The manager deliberately remains small. Lifecycle logic belongs to
+    SystemController.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        controller: SystemController = system_controller,
+    ) -> None:
+        self._controller = controller
 
-        self.status = StartupStatus()
-
-    def initialize(self) -> StartupStatus:
+    async def initialize(self) -> StartupStatus:
         """
-        Arranca todos los módulos necesarios.
+        Initialize the application.
 
-        El orden de inicialización NO debe cambiar.
+        Returns
+        -------
+        StartupStatus
+            Current startup state.
         """
+        await self._controller.startup()
 
-        self._load_configuration()
+        return StartupStatus(
+            completed=self._controller.state == SystemState.RUNNING,
+            state=self._controller.state,
+        )
 
-        self._initialize_logging()
-
-        self._initialize_database()
-
-        self._initialize_license_system()
-
-        self._initialize_scheduler()
-
-        self.status.completed = True
-
-        return self.status
-
-    # ---------------------------------------------------------
-    # Pasos de inicialización
-    # ---------------------------------------------------------
-
-    def _load_configuration(self) -> None:
-
-        # Forzamos la carga de la configuración
-        _ = settings.app.name
-
-        self.status.configuration_loaded = True
-
-    def _initialize_logging(self) -> None:
-
-        # Se implementará en config/logging.py
-        self.status.logging_ready = True
-
-    def _initialize_database(self) -> None:
-
-        # Se implementará en database/
-        self.status.database_ready = True
-
-    def _initialize_license_system(self) -> None:
-
-        # Se implementará en licensing/
-        self.status.license_ready = True
-
-    def _initialize_scheduler(self) -> None:
-
-        # Se implementará en core/scheduler.py
-        self.status.scheduler_ready = True
+    async def shutdown(self) -> None:
+        """Shutdown the application."""
+        await self._controller.shutdown()
 
 
 startup_manager = StartupManager()
