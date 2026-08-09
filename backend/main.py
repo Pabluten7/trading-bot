@@ -1,51 +1,68 @@
 """
-Punto de entrada del Trading Bot.
+Application entry point.
 
-Este archivo NO contiene lógica de negocio.
-
-Su única responsabilidad es arrancar la aplicación
-e informar al usuario si el sistema no puede iniciarse.
+This module is intentionally kept minimal.
+Application lifecycle management belongs to the core package.
 """
 
 from __future__ import annotations
 
+import asyncio
 import sys
 
+from loguru import logger
 from rich.console import Console
 
 from app.core.startup import startup_manager
 
+
 console = Console()
 
 
-def main() -> None:
-    """
-    Punto de entrada principal.
-    """
-
-    console.print()
-
-    console.rule("[bold cyan]Trading Bot[/bold cyan]")
+async def run() -> None:
+    """Run the Trading Bot application."""
 
     try:
-
-        status = startup_manager.initialize()
+        status = await startup_manager.initialize()
 
         if not status.completed:
-            raise RuntimeError("Startup incompleto.")
+            raise RuntimeError(
+                f"Application startup failed. State: {status.state}"
+            )
 
-        console.print("[green]✓ Sistema iniciado correctamente[/green]")
+        console.print("[green]✓ Trading Bot started successfully.[/green]")
+
+        # Keep the application process alive while background services
+        # such as the scheduler are running.
+        await asyncio.Event().wait()
+
+    except asyncio.CancelledError:
+        logger.info("Application task cancelled.")
+
+    except KeyboardInterrupt:
+        logger.info("Keyboard interrupt received.")
+
+    except Exception:
+        logger.exception("Fatal application error.")
+        raise
+
+    finally:
+        await startup_manager.shutdown()
+
+
+def main() -> None:
+    """Synchronous process entry point."""
+
+    try:
+        asyncio.run(run())
+
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Trading Bot stopped.[/yellow]")
 
     except Exception as exc:
-
-        console.print()
-
         console.print(
-            f"[bold red]Error durante el arranque:[/bold red] {exc}"
+            f"\n[bold red]Fatal error:[/bold red] {exc}"
         )
-
-        console.print()
-
         sys.exit(1)
 
 
