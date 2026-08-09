@@ -1,30 +1,39 @@
 """
-settings.py
-===========
+Central application settings.
 
-Configuración centralizada del Trading Bot.
-
-Este módulo es el único punto desde el que debe leerse la configuración
-global del sistema.
-
-Toda la configuración proviene de variables de entorno (.env) y queda
-organizada en bloques lógicos para facilitar su mantenimiento.
+All configurable values used by the backend should be exposed through
+this module instead of being hard-coded throughout the application.
 """
 
+from __future__ import annotations
+
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-# ==========================================================
-# APP
-# ==========================================================
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+PROJECT_DIR = BACKEND_DIR.parent
+
+
+# ---------------------------------------------------------------------------
+# Application
+# ---------------------------------------------------------------------------
+
 
 class AppSettings(BaseSettings):
-    """Configuración general de la aplicación."""
+    """General application configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="APP_")
+    model_config = SettingsConfigDict(
+        env_prefix="APP_",
+        extra="ignore",
+    )
 
     name: str = "Trading Bot"
     version: str = "0.1.0"
@@ -32,27 +41,35 @@ class AppSettings(BaseSettings):
     debug: bool = True
 
 
-# ==========================================================
-# DATABASE
-# ==========================================================
+# ---------------------------------------------------------------------------
+# Database
+# ---------------------------------------------------------------------------
+
 
 class DatabaseSettings(BaseSettings):
-    """Configuración de la base de datos."""
+    """Database configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="DB_")
+    model_config = SettingsConfigDict(
+        env_prefix="DB_",
+        extra="ignore",
+    )
 
     url: str = "sqlite:///./trading_bot.db"
     echo: bool = False
 
 
-# ==========================================================
-# BROKER
-# ==========================================================
+# ---------------------------------------------------------------------------
+# Broker
+# ---------------------------------------------------------------------------
+
 
 class BrokerSettings(BaseSettings):
-    """Configuración del broker."""
+    """Broker connection configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="BROKER_")
+    model_config = SettingsConfigDict(
+        env_prefix="BROKER_",
+        extra="ignore",
+    )
 
     provider: str = "alpaca"
 
@@ -62,132 +79,273 @@ class BrokerSettings(BaseSettings):
     paper_trading: bool = True
 
 
-# ==========================================================
-# MARKET DATA
-# ==========================================================
+# ---------------------------------------------------------------------------
+# Market data
+# ---------------------------------------------------------------------------
+
 
 class MarketDataSettings(BaseSettings):
-    """Configuración del proveedor de datos."""
+    """Market data provider configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="MARKET_")
+    model_config = SettingsConfigDict(
+        env_prefix="MARKET_",
+        extra="ignore",
+    )
 
     provider: str = "alpaca"
 
-    cache_minutes: int = 15
+    cache_minutes: int = Field(
+        default=15,
+        ge=0,
+    )
 
     use_adjusted_data: bool = True
 
 
-# ==========================================================
-# LOGGING
-# ==========================================================
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
 
 class LoggingSettings(BaseSettings):
-    """Configuración del sistema de logs."""
+    """Application logging configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="LOG_")
+    model_config = SettingsConfigDict(
+        env_prefix="LOG_",
+        extra="ignore",
+    )
 
     level: str = "INFO"
 
-    folder: str = "logs"
+    directory: str = "logs"
 
-    file_name: str = "trading_bot.log"
+    filename: str = "trading_bot.log"
+
+    rotation: str = "10 MB"
+
+    retention: str = "30 days"
 
 
-# ==========================================================
-# LICENSING
-# ==========================================================
+# ---------------------------------------------------------------------------
+# Licensing
+# ---------------------------------------------------------------------------
+
 
 class LicensingSettings(BaseSettings):
     """
-    Configuración del sistema de licencias.
+    Commercial licensing configuration.
 
-    Aunque todavía no exista el servidor,
-    dejamos preparada toda la infraestructura.
+    The product uses one subscription plan with full access to the bot.
+    Payment processing and license validation will be handled by the
+    dedicated licensing service.
     """
 
-    model_config = SettingsConfigDict(env_prefix="LICENSE_")
+    model_config = SettingsConfigDict(
+        env_prefix="LICENSE_",
+        extra="ignore",
+    )
 
     enabled: bool = True
 
     server_url: str = ""
 
-    validation_interval_minutes: int = 60
+    validation_interval_minutes: int = Field(
+        default=60,
+        ge=1,
+    )
 
-    offline_grace_hours: int = 72
+    offline_grace_hours: int = Field(
+        default=72,
+        ge=0,
+    )
 
     minimum_supported_version: str = "0.1.0"
 
+    product_id: str = "trading-bot"
 
-# ==========================================================
+    subscription_required: bool = True
+
+
+# ---------------------------------------------------------------------------
 # API
-# ==========================================================
+# ---------------------------------------------------------------------------
+
 
 class ApiSettings(BaseSettings):
-    """Configuración de la API."""
+    """Backend API configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="API_")
+    model_config = SettingsConfigDict(
+        env_prefix="API_",
+        extra="ignore",
+    )
 
     host: str = "127.0.0.1"
 
-    port: int = 8000
+    port: int = Field(
+        default=8000,
+        ge=1,
+        le=65535,
+    )
+
+    reload: bool = False
+
+    cors_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:5173",
+        ]
+    )
 
 
-# ==========================================================
-# UI
-# ==========================================================
-
-class UISettings(BaseSettings):
-    """Configuración de la interfaz."""
-
-    model_config = SettingsConfigDict(env_prefix="UI_")
-
-    refresh_seconds: int = 5
+# ---------------------------------------------------------------------------
+# Frontend
+# ---------------------------------------------------------------------------
 
 
-# ==========================================================
-# SETTINGS ROOT
-# ==========================================================
+class FrontendSettings(BaseSettings):
+    """Frontend-related configuration."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="FRONTEND_",
+        extra="ignore",
+    )
+
+    url: str = "http://localhost:5173"
+
+
+# ---------------------------------------------------------------------------
+# Trading
+# ---------------------------------------------------------------------------
+
+
+class TradingSettings(BaseSettings):
+    """General trading configuration."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="TRADING_",
+        extra="ignore",
+    )
+
+    market_timezone: str = "America/New_York"
+
+    candle_timeframe: str = "4Hour"
+
+    maximum_simultaneous_positions: int = Field(
+        default=8,
+        ge=1,
+    )
+
+    maximum_positions_per_sector: int = Field(
+        default=3,
+        ge=1,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Risk
+# ---------------------------------------------------------------------------
+
+
+class RiskSettings(BaseSettings):
+    """Global risk configuration."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="RISK_",
+        extra="ignore",
+    )
+
+    max_risk_per_trade_percent: float = Field(
+        default=1.0,
+        gt=0,
+        le=100,
+    )
+
+    maximum_portfolio_risk_percent: float = Field(
+        default=5.0,
+        gt=0,
+        le=100,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scheduler
+# ---------------------------------------------------------------------------
+
+
+class SchedulerSettings(BaseSettings):
+    """Background task scheduler configuration."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="SCHEDULER_",
+        extra="ignore",
+    )
+
+    enabled: bool = True
+
+    timezone: str = "America/New_York"
+
+
+# ---------------------------------------------------------------------------
+# Main settings
+# ---------------------------------------------------------------------------
+
 
 class Settings:
     """
-    Objeto principal de configuración.
+    Root configuration object.
 
-    Ejemplo:
+    All application modules should obtain configuration through the
+    ``settings`` singleton rather than instantiating configuration classes
+    themselves.
 
-        settings.database.url
-
-        settings.broker.provider
-
-        settings.logging.level
+    Example
+    -------
+    ``settings.broker.api_key``
+    ``settings.database.url``
+    ``settings.licensing.server_url``
     """
 
-    def __init__(self):
-
+    def __init__(self) -> None:
         self.app = AppSettings()
-
         self.database = DatabaseSettings()
-
         self.broker = BrokerSettings()
-
-        self.market = MarketDataSettings()
-
+        self.market_data = MarketDataSettings()
         self.logging = LoggingSettings()
-
         self.licensing = LicensingSettings()
-
         self.api = ApiSettings()
+        self.frontend = FrontendSettings()
+        self.trading = TradingSettings()
+        self.risk = RiskSettings()
+        self.scheduler = SchedulerSettings()
 
-        self.ui = UISettings()
+    @property
+    def backend_directory(self) -> Path:
+        """Return the backend root directory."""
+        return BACKEND_DIR
+
+    @property
+    def project_directory(self) -> Path:
+        """Return the project root directory."""
+        return PROJECT_DIR
+
+    @property
+    def log_directory(self) -> Path:
+        """Return the absolute log directory."""
+        directory = Path(self.logging.directory)
+
+        if not directory.is_absolute():
+            directory = self.backend_directory / directory
+
+        return directory
 
 
-@lru_cache
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """
-    Devuelve una única instancia de Settings
-    para toda la aplicación.
-    """
+    Return the application-wide settings singleton.
 
+    ``lru_cache`` guarantees that the same Settings instance is reused
+    throughout the lifetime of the process.
+    """
     return Settings()
 
 
