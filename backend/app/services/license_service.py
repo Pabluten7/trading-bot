@@ -31,6 +31,30 @@ class LicenseService:
         ).hexdigest()
 
     @staticmethod
+    def _is_expired(
+        expires_at: datetime | None,
+    ) -> bool:
+        """
+        Determine whether a license expiration date has passed.
+
+        Database drivers may return datetime values without timezone
+        information even when the column is configured for timezone-aware
+        values. Internally we normalize naive values to UTC.
+        """
+
+        if expires_at is None:
+            return False
+
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(
+                tzinfo=timezone.utc
+            )
+
+        now = datetime.now(timezone.utc)
+
+        return expires_at <= now
+
+    @staticmethod
     def generate_license_key() -> str:
         """Generate a new random license key."""
 
@@ -111,11 +135,8 @@ class LicenseService:
         if license_record.status != LicenseStatus.ACTIVE.value:
             return False
 
-        now = datetime.now(timezone.utc)
-
-        if (
-            license_record.expires_at is not None
-            and license_record.expires_at <= now
+        if self._is_expired(
+            license_record.expires_at
         ):
             return False
 
