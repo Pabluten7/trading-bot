@@ -26,7 +26,6 @@ PROJECT_DIR = BACKEND_DIR.parent
 # Application
 # ---------------------------------------------------------------------------
 
-
 class AppSettings(BaseSettings):
     """General application configuration."""
 
@@ -45,7 +44,6 @@ class AppSettings(BaseSettings):
 # Database
 # ---------------------------------------------------------------------------
 
-
 class DatabaseSettings(BaseSettings):
     """Database configuration."""
 
@@ -61,7 +59,6 @@ class DatabaseSettings(BaseSettings):
 # ---------------------------------------------------------------------------
 # Broker
 # ---------------------------------------------------------------------------
-
 
 class BrokerSettings(BaseSettings):
     """Broker connection configuration."""
@@ -82,7 +79,6 @@ class BrokerSettings(BaseSettings):
 # ---------------------------------------------------------------------------
 # Market data
 # ---------------------------------------------------------------------------
-
 
 class MarketDataSettings(BaseSettings):
     """Market data provider configuration."""
@@ -106,7 +102,6 @@ class MarketDataSettings(BaseSettings):
 # Logging
 # ---------------------------------------------------------------------------
 
-
 class LoggingSettings(BaseSettings):
     """Application logging configuration."""
 
@@ -129,7 +124,6 @@ class LoggingSettings(BaseSettings):
 # ---------------------------------------------------------------------------
 # Licensing
 # ---------------------------------------------------------------------------
-
 
 class LicensingSettings(BaseSettings):
     """
@@ -167,9 +161,37 @@ class LicensingSettings(BaseSettings):
 
 
 # ---------------------------------------------------------------------------
-# API
+# Security
 # ---------------------------------------------------------------------------
 
+class SecuritySettings(BaseSettings):
+    """Authentication and security configuration."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="SECURITY_",
+        extra="ignore",
+    )
+
+    jwt_secret_key: str = (
+        "development-only-change-this-secret"
+    )
+
+    jwt_algorithm: str = "HS256"
+
+    access_token_expire_minutes: int = Field(
+        default=30,
+        ge=1,
+    )
+
+    refresh_token_expire_days: int = Field(
+        default=30,
+        ge=1,
+    )
+
+
+# ---------------------------------------------------------------------------
+# API
+# ---------------------------------------------------------------------------
 
 class ApiSettings(BaseSettings):
     """Backend API configuration."""
@@ -200,7 +222,6 @@ class ApiSettings(BaseSettings):
 # Frontend
 # ---------------------------------------------------------------------------
 
-
 class FrontendSettings(BaseSettings):
     """Frontend-related configuration."""
 
@@ -215,7 +236,6 @@ class FrontendSettings(BaseSettings):
 # ---------------------------------------------------------------------------
 # Trading
 # ---------------------------------------------------------------------------
-
 
 class TradingSettings(BaseSettings):
     """General trading configuration."""
@@ -244,7 +264,6 @@ class TradingSettings(BaseSettings):
 # Risk
 # ---------------------------------------------------------------------------
 
-
 class RiskSettings(BaseSettings):
     """Global risk configuration."""
 
@@ -270,7 +289,6 @@ class RiskSettings(BaseSettings):
 # Scheduler
 # ---------------------------------------------------------------------------
 
-
 class SchedulerSettings(BaseSettings):
     """Background task scheduler configuration."""
 
@@ -288,7 +306,6 @@ class SchedulerSettings(BaseSettings):
 # Main settings
 # ---------------------------------------------------------------------------
 
-
 class Settings:
     """
     Root configuration object.
@@ -296,12 +313,6 @@ class Settings:
     All application modules should obtain configuration through the
     ``settings`` singleton rather than instantiating configuration classes
     themselves.
-
-    Example
-    -------
-    ``settings.broker.api_key``
-    ``settings.database.url``
-    ``settings.licensing.server_url``
     """
 
     def __init__(self) -> None:
@@ -311,6 +322,7 @@ class Settings:
         self.market_data = MarketDataSettings()
         self.logging = LoggingSettings()
         self.licensing = LicensingSettings()
+        self.security = SecuritySettings()
         self.api = ApiSettings()
         self.frontend = FrontendSettings()
         self.trading = TradingSettings()
@@ -320,16 +332,19 @@ class Settings:
     @property
     def backend_directory(self) -> Path:
         """Return the backend root directory."""
+
         return BACKEND_DIR
 
     @property
     def project_directory(self) -> Path:
         """Return the project root directory."""
+
         return PROJECT_DIR
 
     @property
     def log_directory(self) -> Path:
         """Return the absolute log directory."""
+
         directory = Path(self.logging.directory)
 
         if not directory.is_absolute():
@@ -346,6 +361,7 @@ def get_settings() -> Settings:
     ``lru_cache`` guarantees that the same Settings instance is reused
     throughout the lifetime of the process.
     """
+
     return Settings()
 
 
