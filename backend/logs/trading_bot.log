@@ -64,3 +64,36 @@
 2026-08-11 17:48:08.213 | INFO     | app.database.initializer:shutdown:64 | Database connection closed.
 2026-08-11 17:48:08.214 | INFO     | app.core.system_controller:shutdown:112 | Trading Bot stopped successfully.
 2026-08-11 17:48:08.214 | INFO     | app.config.logging:shutdown:110 | Shutting down logging system.
+2026-08-12 15:42:08.292 | INFO     | app.core.system_controller:startup:69 | Starting Trading Bot.
+2026-08-12 15:42:08.293 | INFO     | app.database.initializer:initialize:38 | Initializing database.
+2026-08-12 15:42:08.681 | INFO     | app.database.initializer:initialize:50 | Database initialized successfully.
+2026-08-12 15:42:08.745 | INFO     | app.core.scheduler:start:69 | Scheduler started.
+2026-08-12 15:42:08.746 | INFO     | app.core.system_controller:startup:77 | Trading Bot started successfully.
+2026-08-12 15:42:08.747 | INFO     | app.core.system_controller:shutdown:104 | Stopping Trading Bot.
+2026-08-12 15:42:08.748 | INFO     | app.core.scheduler:stop:80 | Scheduler stopped.
+2026-08-12 15:42:08.748 | INFO     | app.database.initializer:shutdown:58 | Closing database connection.
+2026-08-12 15:42:08.751 | INFO     | app.database.initializer:shutdown:64 | Database connection closed.
+2026-08-12 15:42:08.752 | INFO     | app.core.system_controller:shutdown:112 | Trading Bot stopped successfully.
+2026-08-12 15:42:08.754 | INFO     | app.config.logging:shutdown:110 | Shutting down logging system.
+2026-08-12 15:46:11.778 | INFO     | app.core.system_controller:startup:69 | Starting Trading Bot.
+2026-08-12 15:46:11.779 | INFO     | app.database.initializer:initialize:38 | Initializing database.
+2026-08-12 15:46:11.843 | INFO     | app.database.initializer:initialize:50 | Database initialized successfully.
+2026-08-12 15:46:11.846 | INFO     | app.core.scheduler:start:69 | Scheduler started.
+2026-08-12 15:46:11.846 | INFO     | app.core.system_controller:startup:77 | Trading Bot started successfully.
+2026-08-12 15:46:11.847 | INFO     | app.core.system_controller:shutdown:104 | Stopping Trading Bot.
+2026-08-12 15:46:11.847 | INFO     | app.core.scheduler:stop:80 | Scheduler stopped.
+2026-08-12 15:46:11.848 | INFO     | app.database.initializer:shutdown:58 | Closing database connection.
+2026-08-12 15:46:11.850 | INFO     | app.database.initializer:shutdown:64 | Database connection closed.
+2026-08-12 15:46:11.851 | INFO     | app.core.system_controller:shutdown:112 | Trading Bot stopped successfully.
+2026-08-12 15:46:11.851 | INFO     | app.config.logging:shutdown:110 | Shutting down logging system.
+2026-08-12 15:49:56.723 | INFO     | app.core.system_controller:startup:69 | Starting Trading Bot.
+2026-08-12 15:49:56.726 | INFO     | app.database.initializer:initialize:38 | Initializing database.
+2026-08-12 15:49:56.735 | INFO     | app.database.initializer:initialize:50 | Database initialized successfully.
+2026-08-12 15:49:56.739 | INFO     | app.core.scheduler:start:69 | Scheduler started.
+2026-08-12 15:49:56.740 | INFO     | app.core.system_controller:startup:77 | Trading Bot started successfully.
+2026-08-12 15:49:56.741 | INFO     | app.core.system_controller:shutdown:104 | Stopping Trading Bot.
+2026-08-12 15:49:56.745 | INFO     | app.core.scheduler:stop:80 | Scheduler stopped.
+2026-08-12 15:49:56.745 | INFO     | app.database.initializer:shutdown:58 | Closing database connection.
+2026-08-12 15:49:56.748 | INFO     | app.database.initializer:shutdown:64 | Database connection closed.
+2026-08-12 15:49:56.748 | INFO     | app.core.system_controller:shutdown:112 | Trading Bot stopped successfully.
+2026-08-12 15:49:56.749 | INFO     | app.config.logging:shutdown:110 | Shutting down logging system.
