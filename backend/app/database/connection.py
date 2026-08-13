@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.config.settings import settings
@@ -26,6 +27,7 @@ class Database:
 
     def __init__(self) -> None:
         self._engine: Engine | None = None
+        self._session_factory: sessionmaker[Session] | None = None
 
     @property
     def engine(self) -> Engine:
@@ -50,7 +52,7 @@ class Database:
         return self._engine is not None
 
     def initialize(self) -> None:
-        """Initialize the SQLAlchemy engine."""
+        """Initialize the SQLAlchemy engine and session factory."""
 
         if self._engine is not None:
             return
@@ -70,7 +72,6 @@ class Database:
             connect_args["check_same_thread"] = False
             engine_kwargs["connect_args"] = connect_args
 
-            # In-memory SQLite databases need a shared connection pool.
             if ":memory:" in database_url:
                 engine_kwargs["poolclass"] = StaticPool
 
@@ -79,6 +80,30 @@ class Database:
             **engine_kwargs,
         )
 
+        self._session_factory = sessionmaker(
+            bind=self._engine,
+            autoflush=False,
+            autocommit=False,
+            expire_on_commit=False,
+        )
+
+    def get_session(self) -> Session:
+        """
+        Create and return a new database session.
+
+        Raises
+        ------
+        RuntimeError
+            If the database has not been initialized.
+        """
+
+        if self._session_factory is None:
+            raise RuntimeError(
+                "Database has not been initialized."
+            )
+
+        return self._session_factory()
+
     def dispose(self) -> None:
         """Dispose the database engine and release connections."""
 
@@ -86,7 +111,9 @@ class Database:
             return
 
         self._engine.dispose()
+
         self._engine = None
+        self._session_factory = None
 
     @staticmethod
     def _prepare_sqlite_directory(database_url: str) -> None:

@@ -4,13 +4,17 @@ Authentication dependencies for protected API routes.
 
 from __future__ import annotations
 
+from collections.abc import Generator
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.api.dependencies.database import get_db
+from app.api.routes.auth import get_db
 from app.database.models import User
 from app.services.auth_service import auth_service
+from app.api.dependencies.database import get_db
+
 
 
 bearer_scheme = HTTPBearer(
