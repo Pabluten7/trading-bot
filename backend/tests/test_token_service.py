@@ -43,19 +43,35 @@ def test_invalid_token_is_rejected():
             "this-is-not-a-valid-token"
         )
 
-
 def test_tampered_token_is_rejected():
     token = token_service.create_access_token(123)
 
-    tampered_token = token[:-1] + (
-        "x" if token[-1] != "x" else "y"
+    parts = token.split(".")
+
+    assert len(parts) == 3
+
+    signature = parts[2]
+
+    tampered_signature = (
+        ("A" if signature[0] != "A" else "B")
+        + signature[1:]
     )
 
-    with pytest.raises(ValueError, match="Invalid access token"):
+    tampered_token = ".".join(
+        [
+            parts[0],
+            parts[1],
+            tampered_signature,
+        ]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Invalid access token",
+    ):
         token_service.decode_access_token(
             tampered_token
         )
-
 
 def test_wrong_token_type_is_rejected():
     now = datetime.now(timezone.utc)
