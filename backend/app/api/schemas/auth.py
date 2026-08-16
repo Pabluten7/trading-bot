@@ -7,6 +7,17 @@ from __future__ import annotations
 from pydantic import BaseModel, EmailStr, Field
 
 
+class RegisterRequest(BaseModel):
+    """User registration payload."""
+
+    email: EmailStr
+
+    password: str = Field(
+        min_length=8,
+        max_length=128,
+    )
+
+
 class LoginRequest(BaseModel):
     """Credentials submitted during login."""
 
@@ -34,3 +45,15 @@ class CurrentUserResponse(BaseModel):
     email: EmailStr
 
     is_active: bool
+
+
+class RegisterResponse(BaseModel):
+    """Response returned after successful registration."""
+
+    id: int
+
+    email: EmailStr
+
+    is_active: bool
+
+    message: str
