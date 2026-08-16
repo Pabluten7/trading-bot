@@ -4,6 +4,8 @@ Authentication API schemas.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -57,3 +59,27 @@ class RegisterResponse(BaseModel):
     is_active: bool
 
     message: str
+
+
+class AccountStatusResponse(BaseModel):
+    """Current commercial access state of the account."""
+
+    user_active: bool
+
+    subscription_active: bool
+
+    subscription_status: str | None
+
+    subscription_period_start: datetime | None
+
+    subscription_period_end: datetime | None
+
+    license_active: bool
+
+    license_status: str | None
+
+    license_expires_at: datetime | None
+
+    access_allowed: bool
+
+    access_reason: str
