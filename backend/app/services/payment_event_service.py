@@ -1,5 +1,8 @@
 """
 Payment event processing service.
+
+Persists normalized payment-provider events and guarantees that
+the same provider event is not processed more than once.
 """
 
 from __future__ import annotations
@@ -12,7 +15,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database.models import PaymentEvent
-from app.services.payment_service import PaymentEvent as NormalizedPaymentEvent
+from app.services.payment_service import (
+    PaymentEvent as NormalizedPaymentEvent,
+)
 
 
 class PaymentEventService:
@@ -31,7 +36,9 @@ class PaymentEventService:
             PaymentEvent.event_id == event_id,
         )
 
-        return session.execute(statement).scalar_one_or_none()
+        return session.execute(
+            statement
+        ).scalar_one_or_none()
 
     def create(
         self,
@@ -92,15 +99,34 @@ class PaymentEventService:
 
         return record, True
 
+    def is_processed(
+        self,
+        event: PaymentEvent,
+    ) -> bool:
+        """Return whether an event has already been processed."""
+
+        return event.processed_at is not None
+
     def mark_processed(
         self,
         session: Session,
         event: PaymentEvent,
     ) -> PaymentEvent:
-        """Mark an event as successfully processed."""
+        """
+        Mark an event as successfully processed.
 
-        event.processed_at = datetime.now(timezone.utc)
+        If the event was already marked as processed, no database
+        operation is performed.
+        """
 
+        if self.is_processed(event):
+            return event
+
+        event.processed_at = datetime.now(
+            timezone.utc
+        )
+
+        session.add(event)
         session.commit()
         session.refresh(event)
 

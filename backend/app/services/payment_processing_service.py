@@ -11,14 +11,12 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from app.database.models import Subscription
-from app.database.models.enums import SubscriptionStatus
+from app.database.models.enums import PaymentStatus
 from app.services.license_service import license_service
-from app.services.payment_event_service import payment_event_service
-from app.services.payment_service import (
-    PaymentEvent,
-    PaymentStatus,
+from app.services.payment_event_service import (
+    payment_event_service,
 )
+from app.services.payment_service import PaymentEvent
 from app.services.subscription_service import (
     subscription_service,
 )
@@ -35,10 +33,10 @@ class PaymentProcessingService:
         event: PaymentEvent,
     ) -> bool:
         """
-        Process a normalized payment event.
+        Process a verified payment event.
 
         Returns:
-            True when the event was newly processed.
+            True when the event was processed for the first time.
             False when the event had already been processed.
         """
 
@@ -61,6 +59,12 @@ class PaymentProcessingService:
 
             elif event.status == PaymentStatus.FAILED:
                 self._mark_payment_failure(
+                    session,
+                    event.user_id,
+                )
+
+            elif event.status == PaymentStatus.CANCELLED:
+                self._cancel_subscription(
                     session,
                     event.user_id,
                 )
@@ -89,9 +93,11 @@ class PaymentProcessingService:
             days=self.SUBSCRIPTION_PERIOD_DAYS,
         )
 
-        subscription = subscription_service.get_by_user_id(
-            session,
-            user_id,
+        subscription = (
+            subscription_service.get_by_user_id(
+                session,
+                user_id,
+            )
         )
 
         if subscription is None:
@@ -120,15 +126,39 @@ class PaymentProcessingService:
     ) -> None:
         """Mark an existing subscription as past due."""
 
-        subscription = subscription_service.get_by_user_id(
-            session,
-            user_id,
+        subscription = (
+            subscription_service.get_by_user_id(
+                session,
+                user_id,
+            )
         )
 
         if subscription is None:
             return
 
         subscription_service.mark_past_due(
+            session,
+            subscription,
+        )
+
+    def _cancel_subscription(
+        self,
+        session: Session,
+        user_id: int,
+    ) -> None:
+        """Cancel the user's subscription."""
+
+        subscription = (
+            subscription_service.get_by_user_id(
+                session,
+                user_id,
+            )
+        )
+
+        if subscription is None:
+            return
+
+        subscription_service.cancel(
             session,
             subscription,
         )

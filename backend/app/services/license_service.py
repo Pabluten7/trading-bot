@@ -31,24 +31,36 @@ class LicenseService:
         ).hexdigest()
 
     @staticmethod
+    def _normalize_datetime(
+        value: datetime,
+    ) -> datetime:
+        """
+        Normalize a datetime to timezone-aware UTC.
+
+        SQLite may return naive datetimes even when the SQLAlchemy
+        column is configured with timezone=True.
+        """
+
+        if value.tzinfo is None:
+            return value.replace(
+                tzinfo=timezone.utc
+            )
+
+        return value.astimezone(timezone.utc)
+
+    @classmethod
     def _is_expired(
+        cls,
         expires_at: datetime | None,
     ) -> bool:
-        """
-        Determine whether a license expiration date has passed.
-
-        Database drivers may return datetime values without timezone
-        information even when the column is configured for timezone-aware
-        values. Internally we normalize naive values to UTC.
-        """
+        """Determine whether a license expiration date has passed."""
 
         if expires_at is None:
             return False
 
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(
-                tzinfo=timezone.utc
-            )
+        expires_at = cls._normalize_datetime(
+            expires_at
+        )
 
         now = datetime.now(timezone.utc)
 
@@ -150,11 +162,83 @@ class LicenseService:
     ) -> License:
         """Activate a license."""
 
-        license_record.status = LicenseStatus.ACTIVE.value
+        license_record.status = (
+            LicenseStatus.ACTIVE.value
+        )
+
         license_record.activated_at = datetime.now(
             timezone.utc
         )
+
         license_record.expires_at = expires_at
+
+        session.add(license_record)
+        session.commit()
+        session.refresh(license_record)
+
+        return license_record
+
+    def activate_for_subscription_period(
+        self,
+        session: Session,
+        user_id: int,
+        expires_at: datetime,
+    ) -> License:
+        """
+        Activate or renew the license associated with a subscription.
+
+        A user must have a license before it can be activated.
+        If no license exists, one is created automatically.
+        """
+
+        expires_at = self._normalize_datetime(
+            expires_at
+        )
+
+        license_record = self.get_by_user_id(
+            session,
+            user_id,
+        )
+
+        if license_record is None:
+            license_record, _ = self.create(
+                session,
+                user_id,
+            )
+
+        return self.activate(
+            session,
+            license_record,
+            expires_at=expires_at,
+        )
+
+    def expire(
+        self,
+        session: Session,
+        license_record: License,
+    ) -> License:
+        """Mark a license as expired."""
+
+        license_record.status = (
+            LicenseStatus.EXPIRED.value
+        )
+
+        session.add(license_record)
+        session.commit()
+        session.refresh(license_record)
+
+        return license_record
+
+    def suspend(
+        self,
+        session: Session,
+        license_record: License,
+    ) -> License:
+        """Suspend a license."""
+
+        license_record.status = (
+            LicenseStatus.SUSPENDED.value
+        )
 
         session.add(license_record)
         session.commit()
@@ -169,7 +253,9 @@ class LicenseService:
     ) -> License:
         """Revoke a license."""
 
-        license_record.status = LicenseStatus.REVOKED.value
+        license_record.status = (
+            LicenseStatus.REVOKED.value
+        )
 
         session.add(license_record)
         session.commit()
