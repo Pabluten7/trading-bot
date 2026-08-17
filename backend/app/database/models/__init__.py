@@ -13,6 +13,7 @@ from app.database.models.enums import (
     SubscriptionStatus,
 )
 from app.database.models.license import License
+from app.database.models.payment_event import PaymentEvent
 from app.database.models.subscription import Subscription
 from app.database.models.user import User
 
@@ -23,6 +24,7 @@ __all__ = [
     "DeviceStatus",
     "License",
     "LicenseStatus",
+    "PaymentEvent",
     "Subscription",
     "SubscriptionStatus",
     "User",

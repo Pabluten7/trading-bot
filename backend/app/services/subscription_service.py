@@ -31,6 +31,38 @@ class SubscriptionService:
             )
         )
 
+    def create(
+        self,
+        session: Session,
+        user_id: int,
+    ) -> Subscription:
+        """
+        Create an inactive subscription for a user.
+
+        A subscription is created separately from payment activation.
+        """
+
+        existing = self.get_by_user_id(
+            session,
+            user_id,
+        )
+
+        if existing is not None:
+            raise ValueError(
+                "User already has a subscription."
+            )
+
+        subscription = Subscription(
+            user_id=user_id,
+            status=SubscriptionStatus.INACTIVE.value,
+        )
+
+        session.add(subscription)
+        session.commit()
+        session.refresh(subscription)
+
+        return subscription
+
     def is_active(
         self,
         session: Session,
@@ -75,7 +107,15 @@ class SubscriptionService:
     ) -> Subscription:
         """Activate or renew a subscription."""
 
-        subscription.status = SubscriptionStatus.ACTIVE.value
+        if period_end <= period_start:
+            raise ValueError(
+                "Subscription period end must be after "
+                "period start."
+            )
+
+        subscription.status = (
+            SubscriptionStatus.ACTIVE.value
+        )
 
         if subscription.started_at is None:
             subscription.started_at = period_start
@@ -90,6 +130,23 @@ class SubscriptionService:
 
         return subscription
 
+    def mark_past_due(
+        self,
+        session: Session,
+        subscription: Subscription,
+    ) -> Subscription:
+        """Mark a subscription as past due."""
+
+        subscription.status = (
+            SubscriptionStatus.PAST_DUE.value
+        )
+
+        session.add(subscription)
+        session.commit()
+        session.refresh(subscription)
+
+        return subscription
+
     def cancel(
         self,
         session: Session,
@@ -97,8 +154,12 @@ class SubscriptionService:
     ) -> Subscription:
         """Cancel a subscription."""
 
-        subscription.status = SubscriptionStatus.CANCELLED.value
-        subscription.cancelled_at = datetime.now(timezone.utc)
+        subscription.status = (
+            SubscriptionStatus.CANCELLED.value
+        )
+        subscription.cancelled_at = (
+            datetime.now(timezone.utc)
+        )
 
         session.add(subscription)
         session.commit()
