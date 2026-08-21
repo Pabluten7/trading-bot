@@ -1,5 +1,9 @@
 """
 Market data provider abstraction.
+
+Defines the interface that external market-data providers must
+implement. The rest of the application works against this abstraction
+instead of depending directly on Alpaca or another provider.
 """
 
 from __future__ import annotations
@@ -12,34 +16,47 @@ from app.data.models import Candle
 
 class MarketDataProvider(ABC):
     """
-    Provider-independent market-data interface.
+    Abstract interface for market-data providers.
 
-    External providers must implement this interface before their
-    data enters the trading engine.
+    External providers such as Alpaca will implement this interface.
     """
 
     @abstractmethod
-    async def get_candles(
+    def get_candles(
         self,
-        symbol: str,
+        symbols: list[str],
         start: datetime,
         end: datetime,
-        timeframe: str,
-    ) -> list[Candle]:
+    ) -> dict[str, list[Candle]]:
         """
-        Retrieve normalized candles for a symbol.
-        """
+        Return normalized candles for the requested symbols.
 
+        Parameters
+        ----------
+        symbols:
+            List of stock symbols.
+
+        start:
+            Start of the requested period.
+
+        end:
+            End of the requested period.
+
+        Returns
+        -------
+        dict[str, list[Candle]]
+            Candles grouped by symbol.
+        """
         raise NotImplementedError
 
     @abstractmethod
-    async def get_latest_candle(
+    def get_latest_candle(
         self,
         symbol: str,
-        timeframe: str,
     ) -> Candle | None:
         """
-        Return the latest available candle.
-        """
+        Return the latest available candle for a symbol.
 
+        Returns ``None`` when no candle is available.
+        """
         raise NotImplementedError
