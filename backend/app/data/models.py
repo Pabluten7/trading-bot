@@ -1,56 +1,63 @@
 """
-Market data models.
-
-Defines the normalized internal representation of market data.
+Market data domain models.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Candle:
     """
-    Represents one OHLCV market candle.
+    Normalized OHLCV candle.
 
-    All market-data providers must be converted into this format
-    before being consumed by the rest of the application.
+    Prices use Decimal to avoid unnecessary floating-point
+    precision errors in trading calculations.
     """
 
     symbol: str
     timestamp: datetime
 
-    open: float
-    high: float
-    low: float
-    close: float
+    open: Decimal
+    high: Decimal
+    low: Decimal
+    close: Decimal
 
-    volume: float
+    volume: int
 
-    timeframe: str = "4Hour"
+    adjusted: bool = True
 
-    @property
-    def is_bullish(self) -> bool:
-        """Return whether the candle closed above its open."""
+    def __post_init__(self) -> None:
+        """Validate candle consistency."""
 
-        return self.close > self.open
+        if not self.symbol:
+            raise ValueError(
+                "Candle symbol cannot be empty."
+            )
 
-    @property
-    def is_bearish(self) -> bool:
-        """Return whether the candle closed below its open."""
+        if self.volume < 0:
+            raise ValueError(
+                "Candle volume cannot be negative."
+            )
 
-        return self.close < self.open
+        if self.high < self.low:
+            raise ValueError(
+                "Candle high cannot be lower than low."
+            )
 
-    @property
-    def body_size(self) -> float:
-        """Return the absolute candle body size."""
+        if not (
+            self.low <= self.open <= self.high
+        ):
+            raise ValueError(
+                "Candle open must be between low and high."
+            )
 
-        return abs(self.close - self.open)
-
-    @property
-    def range(self) -> float:
-        """Return the complete candle price range."""
-
-        return self.high - self.low
+        if not (
+            self.low <= self.close <= self.high
+        ):
+            raise ValueError(
+                "Candle close must be between low and high."
+            )

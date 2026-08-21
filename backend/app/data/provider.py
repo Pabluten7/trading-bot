@@ -1,7 +1,5 @@
 """
 Market data provider abstraction.
-
-External market-data providers must implement this interface.
 """
 
 from __future__ import annotations
@@ -14,10 +12,10 @@ from app.data.models import Candle
 
 class MarketDataProvider(ABC):
     """
-    Abstract market-data provider.
+    Provider-independent market-data interface.
 
-    This abstraction keeps the trading system independent from
-    the external market-data vendor.
+    External providers must implement this interface before their
+    data enters the trading engine.
     """
 
     @abstractmethod
@@ -26,24 +24,10 @@ class MarketDataProvider(ABC):
         symbol: str,
         start: datetime,
         end: datetime,
-        timeframe: str = "4Hour",
+        timeframe: str,
     ) -> list[Candle]:
         """
-        Return historical candles for a symbol.
-
-        Parameters
-        ----------
-        symbol:
-            Market symbol, for example ``AAPL``.
-
-        start:
-            Beginning of the requested period.
-
-        end:
-            End of the requested period.
-
-        timeframe:
-            Candle timeframe. The project currently uses 4-hour candles.
+        Retrieve normalized candles for a symbol.
         """
 
         raise NotImplementedError
@@ -52,8 +36,10 @@ class MarketDataProvider(ABC):
     async def get_latest_candle(
         self,
         symbol: str,
-        timeframe: str = "4Hour",
+        timeframe: str,
     ) -> Candle | None:
-        """Return the latest available candle for a symbol."""
+        """
+        Return the latest available candle.
+        """
 
         raise NotImplementedError

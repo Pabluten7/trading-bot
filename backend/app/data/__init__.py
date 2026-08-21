@@ -11,4 +11,4 @@ from app.data.provider import MarketDataProvider
 __all__ = [
     "Candle",
     "MarketDataProvider",
-]
+]   
