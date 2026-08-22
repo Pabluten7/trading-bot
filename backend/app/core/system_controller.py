@@ -13,6 +13,7 @@ from loguru import logger
 from app.config.environment import validate_environment
 from app.config.logging import configure_logging, shutdown_logging
 from app.core.scheduler import scheduler
+from app.data.manager import market_data_manager
 from app.database.initializer import database_initializer
 
 
@@ -30,8 +31,8 @@ class SystemController:
     """
     Controls application startup and shutdown.
 
-    This class coordinates infrastructure services but contains no trading
-    logic.
+    This class coordinates infrastructure services but contains no
+    trading logic.
     """
 
     def __init__(self) -> None:
@@ -40,18 +41,22 @@ class SystemController:
     @property
     def state(self) -> SystemState:
         """Return the current system state."""
+
         return self._state
 
     @property
     def is_running(self) -> bool:
         """Return whether the system is currently running."""
+
         return self._state == SystemState.RUNNING
 
     async def startup(self) -> None:
         """Start all required application infrastructure."""
 
         if self._state == SystemState.RUNNING:
-            logger.warning("System is already running.")
+            logger.warning(
+                "System is already running."
+            )
             return
 
         if self._state == SystemState.STARTING:
@@ -66,9 +71,13 @@ class SystemController:
 
             configure_logging()
 
-            logger.info("Starting Trading Bot.")
+            logger.info(
+                "Starting Trading Bot."
+            )
 
             database_initializer.initialize()
+
+            market_data_manager.initialize()
 
             scheduler.start()
 
@@ -101,9 +110,13 @@ class SystemController:
         self._state = SystemState.STOPPING
 
         try:
-            logger.info("Stopping Trading Bot.")
+            logger.info(
+                "Stopping Trading Bot."
+            )
 
             scheduler.stop()
+
+            market_data_manager.shutdown()
 
             database_initializer.shutdown()
 
@@ -119,7 +132,9 @@ class SystemController:
     async def restart(self) -> None:
         """Restart the application."""
 
-        logger.info("Restarting Trading Bot.")
+        logger.info(
+            "Restarting Trading Bot."
+        )
 
         await self.shutdown()
         await self.startup()
@@ -129,13 +144,24 @@ class SystemController:
 
         try:
             scheduler.stop()
+
         except Exception:
             logger.exception(
                 "Failed to stop scheduler after startup failure."
             )
 
         try:
+            market_data_manager.shutdown()
+
+        except Exception:
+            logger.exception(
+                "Failed to stop market-data manager "
+                "after startup failure."
+            )
+
+        try:
             database_initializer.shutdown()
+
         except Exception:
             logger.exception(
                 "Failed to close database after startup failure."

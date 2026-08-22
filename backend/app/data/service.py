@@ -37,7 +37,7 @@ class MarketDataService:
 
     def configure_provider(
         self,
-        provider: MarketDataProvider,
+        provider: MarketDataProvider | None,
     ) -> None:
         """Configure the market-data provider."""
 
