@@ -1,19 +1,23 @@
 """
 Alpaca market-data provider.
 
-Implements the internal MarketDataProvider abstraction using Alpaca's
-historical stock market-data API.
+Adapts Alpaca market data to the internal MarketDataProvider
+abstraction used by the Trading Bot.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from alpaca.data.historical import StockHistoricalDataClient
-from alpaca.data.requests import StockBarsRequest
-from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
-from alpaca.data.enums import Adjustment
+from alpaca.data.requests import (
+    StockBarsRequest,
+)
+from alpaca.data.timeframe import (
+    TimeFrame,
+    TimeFrameUnit,
+)
 
 from app.config.settings import settings
 from app.data.models import Candle
@@ -22,94 +26,34 @@ from app.data.provider import MarketDataProvider
 
 class AlpacaMarketDataProvider(MarketDataProvider):
     """
-    Market-data provider backed by Alpaca.
+    Alpaca implementation of the market-data provider.
 
-    The rest of the application should interact with this class only
-    through the MarketDataProvider interface.
+    This class is responsible only for retrieving and normalizing
+    market data. Trading decisions are handled elsewhere.
     """
 
-    def __init__(
-        self,
-        api_key: str | None = None,
-        secret_key: str | None = None,
-    ) -> None:
-        """
-        Initialize the Alpaca market-data client.
+    def __init__(self) -> None:
+        self._client: StockHistoricalDataClient | None = None
 
-        If credentials are not explicitly provided, they are obtained
-        from application settings.
-        """
+    @property
+    def client(self) -> StockHistoricalDataClient:
+        """Return the initialized Alpaca historical-data client."""
 
-        resolved_api_key = (
-            api_key
-            if api_key is not None
-            else settings.broker.api_key
-        )
+        if self._client is None:
+            api_key = settings.broker.api_key
+            secret_key = settings.broker.secret_key
 
-        resolved_secret_key = (
-            secret_key
-            if secret_key is not None
-            else settings.broker.secret_key
-        )
+            if not api_key or not secret_key:
+                raise RuntimeError(
+                    "Alpaca API credentials are not configured."
+                )
 
-        if not resolved_api_key:
-            raise ValueError(
-                "Alpaca API key is not configured."
+            self._client = StockHistoricalDataClient(
+                api_key=api_key,
+                secret_key=secret_key,
             )
 
-        if not resolved_secret_key:
-            raise ValueError(
-                "Alpaca secret key is not configured."
-            )
-
-        self._client = StockHistoricalDataClient(
-            api_key=resolved_api_key,
-            secret_key=resolved_secret_key,
-        )
-
-        self._timeframe = TimeFrame(
-            4,
-            TimeFrameUnit.Hour,
-        )
-
-    @staticmethod
-    def _normalize_timestamp(
-        timestamp: datetime,
-    ) -> datetime:
-        """
-        Normalize timestamps to timezone-aware UTC datetimes.
-        """
-
-        if timestamp.tzinfo is None:
-            return timestamp.replace(
-                tzinfo=timezone.utc
-            )
-
-        return timestamp.astimezone(timezone.utc)
-
-    @staticmethod
-    def _to_candle(
-        symbol: str,
-        bar: object,
-    ) -> Candle:
-        """
-        Convert an Alpaca bar into the internal Candle model.
-        """
-
-        timestamp = AlpacaMarketDataProvider._normalize_timestamp(
-            bar.timestamp
-        )
-
-        return Candle(
-            symbol=symbol,
-            timestamp=timestamp,
-            open=Decimal(str(bar.open)),
-            high=Decimal(str(bar.high)),
-            low=Decimal(str(bar.low)),
-            close=Decimal(str(bar.close)),
-            volume=int(bar.volume),
-            adjusted=True,
-        )
+        return self._client
 
     def get_candles(
         self,
@@ -118,58 +62,59 @@ class AlpacaMarketDataProvider(MarketDataProvider):
         end: datetime,
     ) -> dict[str, list[Candle]]:
         """
-        Retrieve 4-hour candles for multiple symbols.
+        Return normalized 4-hour candles for the requested symbols.
 
-        Results are returned grouped by symbol.
+        The internal trading configuration controls the intended
+        candle timeframe. Currently the bot is designed around 4H
+        candles.
         """
 
         if not symbols:
             return {}
 
-        normalized_symbols = [
-            symbol.strip().upper()
-            for symbol in symbols
-            if symbol.strip()
-        ]
-
-        if not normalized_symbols:
-            return {}
-
         if start >= end:
             raise ValueError(
-                "Market-data start time must be before end time."
+                "start must be earlier than end."
             )
 
         request = StockBarsRequest(
-            symbol_or_symbols=normalized_symbols,
-            timeframe=self._timeframe,
+            symbol_or_symbols=symbols,
+            timeframe=TimeFrame(
+                amount=4,
+                unit=TimeFrameUnit.Hour,
+            ),
             start=start,
             end=end,
-            adjustment=Adjustment.ALL,
+            adjustment=(
+                "all"
+                if settings.market_data.use_adjusted_data
+                else "raw"
+            ),
         )
 
-        response = self._client.get_stock_bars(
-            request
-        )
+        response = self.client.get_stock_bars(request)
 
         result: dict[str, list[Candle]] = {
             symbol: []
-            for symbol in normalized_symbols
+            for symbol in symbols
         }
 
-        for symbol in normalized_symbols:
-            try:
-                bars = response[symbol]
-            except KeyError:
-                continue
+        for symbol in symbols:
+            bars = response.data.get(symbol, [])
 
-            result[symbol] = [
-                self._to_candle(
-                    symbol=symbol,
-                    bar=bar,
+            for bar in bars:
+                result[symbol].append(
+                    Candle(
+                        symbol=symbol,
+                        timestamp=bar.timestamp,
+                        open=Decimal(str(bar.open)),
+                        high=Decimal(str(bar.high)),
+                        low=Decimal(str(bar.low)),
+                        close=Decimal(str(bar.close)),
+                        volume=int(bar.volume),
+                        adjusted=settings.market_data.use_adjusted_data,
+                    )
                 )
-                for bar in bars
-            ]
 
         return result
 
@@ -178,44 +123,32 @@ class AlpacaMarketDataProvider(MarketDataProvider):
         symbol: str,
     ) -> Candle | None:
         """
-        Retrieve the most recent 4-hour candle for a symbol.
+        Return the latest available 4-hour candle for a symbol.
         """
 
-        normalized_symbol = symbol.strip().upper()
-
-        if not normalized_symbol:
+        if not symbol:
             raise ValueError(
-                "Symbol cannot be empty."
+                "symbol cannot be empty."
             )
 
-        request = StockBarsRequest(
-            symbol_or_symbols=[normalized_symbol],
-            timeframe=self._timeframe,
-            limit=1,
-            adjustment=Adjustment.ALL,
+        now = datetime.now().astimezone()
+
+        start = now - timedelta(days=3)
+
+        candles = self.get_candles(
+            symbols=[symbol],
+            start=start,
+            end=now,
         )
 
-        response = self._client.get_stock_bars(
-            request
-        )
+        symbol_candles = candles.get(symbol, [])
 
-        try:
-            bars = response[normalized_symbol]
-        except KeyError:
+        if not symbol_candles:
             return None
 
-        if not bars:
-            return None
-
-        return self._to_candle(
-            symbol=normalized_symbol,
-            bar=bars[-1],
-        )
+        return symbol_candles[-1]
 
 
 alpaca_market_data_provider = (
-    AlpacaMarketDataProvider
-    if settings.broker.api_key
-    and settings.broker.secret_key
-    else None
+    AlpacaMarketDataProvider()
 )
