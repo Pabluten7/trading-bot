@@ -15,6 +15,10 @@ from app.config.logging import configure_logging, shutdown_logging
 from app.core.scheduler import scheduler
 from app.data.manager import market_data_manager
 from app.database.initializer import database_initializer
+from app.broker.alpaca_provider import alpaca_broker_provider
+from app.broker.service import broker_service
+from app.data.alpaca_provider import alpaca_market_data_provider
+from app.data.service import market_data_service
 
 
 class SystemState(StrEnum):
@@ -76,6 +80,18 @@ class SystemController:
             )
 
             database_initializer.initialize()
+            
+                        # Configure external providers lazily.
+            #
+            # Actual API connections are created only when a service
+            # performs its first real operation.
+            market_data_service.configure_provider(
+                alpaca_market_data_provider,
+            )
+
+            broker_service.configure_provider(
+                alpaca_broker_provider,
+            )
 
             market_data_manager.initialize()
 
