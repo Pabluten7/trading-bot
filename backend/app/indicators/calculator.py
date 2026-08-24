@@ -12,7 +12,7 @@ from app.indicators.ema import ema
 from app.indicators.rsi import rsi
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class IndicatorSnapshot:
     """Calculated indicators for a single candle."""
 
@@ -41,7 +41,7 @@ class IndicatorCalculator:
             return []
 
         closes = [
-            candle.close
+            float(candle.close)
             for candle in candles
         ]
 

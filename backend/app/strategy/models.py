@@ -1,5 +1,7 @@
 """
-Strategy data models.
+Strategy domain models.
+
+Contains the normalized market state consumed by the strategy engine.
 """
 
 from __future__ import annotations
@@ -7,39 +9,27 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from app.scanner.models import ScanCandidate
+from app.indicators.calculator import IndicatorSnapshot
 
 
-class SignalDirection(StrEnum):
-    """Possible trading signal directions."""
+class MarketDirection(StrEnum):
+    """Detected market direction."""
 
-    LONG = "long"
-
-
-class SignalStrength(StrEnum):
-    """Strength of an entry signal."""
-
-    WEAK = "weak"
-    MODERATE = "moderate"
-    STRONG = "strong"
+    BULLISH = "bullish"
+    BEARISH = "bearish"
+    NEUTRAL = "neutral"
 
 
-@dataclass(frozen=True)
-class EntrySignal:
+@dataclass(frozen=True, slots=True)
+class StrategyContext:
     """
-    Represents a strategy-generated entry signal.
+    Market information required by the strategy.
 
-    A signal is only a proposal. It does not execute an order.
+    This object deliberately contains no broker or portfolio state.
     """
 
     symbol: str
-    direction: SignalDirection
+    close: float
+    indicators: IndicatorSnapshot
 
-    strength: SignalStrength
-
-    score: float
-    price: float
-
-    reason: str
-
-    candidate: ScanCandidate
+    market_direction: MarketDirection = MarketDirection.NEUTRAL

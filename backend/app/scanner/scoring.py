@@ -1,151 +1,101 @@
 """
-Scanner scoring logic.
+Candidate scoring system.
+
+Converts technical conditions into a normalized score used to rank
+scanner candidates.
 """
 
 from __future__ import annotations
 
-from app.indicators.calculator import IndicatorSnapshot
+from app.scanner.models import ScanCandidate
 
 
-def calculate_trend_score(
-    indicators: IndicatorSnapshot,
-) -> float:
+class CandidateScorer:
     """
-    Calculate the trend component of the scanner score.
+    Calculate a normalized candidate score.
 
-    The score rewards bullish EMA alignment:
-
-        EMA20 > EMA50 > EMA200
-
-    The score is normalized between 0 and 100.
+    The score is used for ranking, not for directly executing trades.
     """
 
-    if (
-        indicators.ema20 is None
-        or indicators.ema50 is None
-        or indicators.ema200 is None
-    ):
-        return 0.0
+    def score(
+        self,
+        candidate: ScanCandidate,
+    ) -> float:
+        """
+        Calculate the candidate score.
 
-    score = 0.0
+        The current model rewards:
 
-    if indicators.ema20 > indicators.ema50:
-        score += 50.0
+        - bullish EMA alignment
+        - healthy RSI momentum
+        - usable ATR volatility
 
-    if indicators.ema50 > indicators.ema200:
-        score += 50.0
+        The result is normalized to 0-100.
+        """
 
-    return score
+        indicators = candidate.indicators
 
+        score = 0.0
 
-def calculate_momentum_score(
-    indicators: IndicatorSnapshot,
-) -> float:
-    """
-    Calculate the momentum component.
+        # ------------------------------------------------------------
+        # Trend: 50 points
+        # ------------------------------------------------------------
 
-    RSI is used as a momentum filter rather than an independent
-    buy signal.
+        if (
+            indicators.ema20 is not None
+            and indicators.ema50 is not None
+            and indicators.ema200 is not None
+        ):
+            if (
+                indicators.ema20
+                > indicators.ema50
+                > indicators.ema200
+            ):
+                score += 50.0
 
-    The preferred zone is between 50 and 70.
-    """
+            elif indicators.ema20 > indicators.ema50:
+                score += 25.0
 
-    if indicators.rsi14 is None:
-        return 0.0
+        # ------------------------------------------------------------
+        # Momentum: 30 points
+        # ------------------------------------------------------------
 
-    value = indicators.rsi14
+        rsi_value = indicators.rsi14
 
-    if 50.0 <= value <= 70.0:
-        return 100.0
+        if rsi_value is not None:
+            if 55.0 <= rsi_value <= 65.0:
+                score += 30.0
 
-    if 45.0 <= value < 50.0:
-        return 50.0
+            elif 50.0 <= rsi_value <= 70.0:
+                score += 20.0
 
-    if 70.0 < value <= 75.0:
-        return 50.0
+            elif 45.0 <= rsi_value <= 75.0:
+                score += 10.0
 
-    return 0.0
+        # ------------------------------------------------------------
+        # Volatility: 20 points
+        # ------------------------------------------------------------
 
+        atr_value = indicators.atr14
 
-def calculate_volatility_score(
-    indicators: IndicatorSnapshot,
-    price: float,
-) -> float:
-    """
-    Calculate the volatility component.
+        if (
+            atr_value is not None
+            and candidate.price > 0
+        ):
+            atr_percentage = (
+                atr_value / candidate.price
+            ) * 100.0
 
-    ATR is currently used as a basic measure of price movement.
+            if 1.0 <= atr_percentage <= 4.0:
+                score += 20.0
 
-    The score remains neutral when insufficient information is
-    available.
-    """
+            elif 0.5 <= atr_percentage <= 7.0:
+                score += 10.0
 
-    if (
-        indicators.atr14 is None
-        or price <= 0
-    ):
-        return 0.0
-
-    atr_percentage = (
-        indicators.atr14 / price
-    ) * 100.0
-
-    # Avoid rewarding extremely low or extremely high volatility.
-    if 1.0 <= atr_percentage <= 5.0:
-        return 100.0
-
-    if 0.5 <= atr_percentage < 1.0:
-        return 50.0
-
-    if 5.0 < atr_percentage <= 7.0:
-        return 50.0
-
-    return 0.0
+        return round(
+            min(score, 100.0),
+            2,
+        )
 
 
-def calculate_total_score(
-    indicators: IndicatorSnapshot,
-    price: float,
-) -> tuple[
-    float,
-    float,
-    float,
-    float,
-]:
-    """
-    Calculate the complete scanner score.
-
-    Returns
-    -------
-    tuple
-        total score,
-        trend score,
-        momentum score,
-        volatility score.
-    """
-
-    trend_score = calculate_trend_score(
-        indicators
-    )
-
-    momentum_score = calculate_momentum_score(
-        indicators
-    )
-
-    volatility_score = calculate_volatility_score(
-        indicators,
-        price,
-    )
-
-    total_score = (
-        trend_score * 0.50
-        + momentum_score * 0.30
-        + volatility_score * 0.20
-    )
-
-    return (
-        total_score,
-        trend_score,
-        momentum_score,
-        volatility_score,
-    )
+candidate_scorer = CandidateScorer()

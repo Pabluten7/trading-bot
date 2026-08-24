@@ -1,14 +1,17 @@
 """
 Market scanner package.
-
-Identifies and ranks potential trading candidates.
 """
 
-from app.scanner.models import ScanCandidate, ScanResult
-from app.scanner.scanner import scanner
+from app.scanner.models import ScanCandidate
+from app.scanner.scanner import MarketScanner
+from app.scanner.scoring import (
+    CandidateScorer,
+    candidate_scorer,
+)
 
 __all__ = [
+    "CandidateScorer",
+    "MarketScanner",
     "ScanCandidate",
-    "ScanResult",
-    "scanner",
+    "candidate_scorer",
 ]

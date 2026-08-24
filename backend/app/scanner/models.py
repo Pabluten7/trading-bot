@@ -1,44 +1,30 @@
 """
-Scanner data models.
+Scanner domain models.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.data.models import Candle
 from app.indicators.calculator import IndicatorSnapshot
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ScanCandidate:
     """
-    Represents a stock that passed the scanner filters.
+    Represents a stock candidate produced by the scanner.
+
+    A candidate contains market information and its calculated
+    indicators, but it does not represent a trading order.
     """
 
     symbol: str
-    sector: str
     price: float
 
     indicators: IndicatorSnapshot
 
     score: float
+    eligible: bool
 
-    trend_score: float
-    momentum_score: float
-    volatility_score: float
-
-    eligible: bool = True
-
-
-@dataclass(frozen=True)
-class ScanResult:
-    """
-    Result returned by the market scanner.
-    """
-
-    candidates: list[ScanCandidate]
-
-    scanned_symbols: int
-    eligible_symbols: int
-
-    maximum_candidates: int = 8
+    candle: Candle
