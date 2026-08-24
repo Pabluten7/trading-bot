@@ -5,6 +5,7 @@ Central risk management service.
 from __future__ import annotations
 
 from app.config.settings import settings
+from app.portfolio.models import PortfolioSnapshot
 from app.risk.models import PositionSizing, RiskParameters
 from app.risk.portfolio_risk import PortfolioRisk
 from app.risk.position_sizer import position_sizer
@@ -37,18 +38,21 @@ class RiskManager:
             parameters
         )
 
-    def can_open_position(
+    def can_accept_position_risk(
         self,
-        *,
-        account_equity: float,
-        current_risk_amount: float,
+        portfolio: PortfolioSnapshot,
         additional_risk: float,
     ) -> bool:
-        """Check whether a new position fits portfolio risk limits."""
+        """
+        Determine whether a new position fits the portfolio
+        risk limit.
+        """
 
         portfolio_risk = PortfolioRisk(
-            account_equity=account_equity,
-            current_risk_amount=current_risk_amount,
+            account_equity=portfolio.account_equity,
+            current_risk_amount=(
+                portfolio.total_risk_amount
+            ),
             maximum_risk_percent=(
                 settings.risk.maximum_portfolio_risk_percent
             ),
