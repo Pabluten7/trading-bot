@@ -10,6 +10,8 @@ from enum import StrEnum
 
 from loguru import logger
 
+from app.trading.cycle import trading_cycle
+
 from app.config.environment import validate_environment
 from app.config.logging import configure_logging, shutdown_logging
 from app.core.scheduler import scheduler
@@ -96,6 +98,13 @@ class SystemController:
             market_data_manager.initialize()
 
             scheduler.start()
+            
+            scheduler.register_interval_task(
+            task_id="trading_cycle",
+            name="Trading cycle",
+            task=trading_cycle.run,
+            interval_seconds=60,
+            )
 
             self._state = SystemState.RUNNING
 
