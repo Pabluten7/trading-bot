@@ -1,3 +1,4 @@
+
 """
 Trading cycle.
 
@@ -7,18 +8,28 @@ trading universe.
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 from loguru import logger
 
 from app.broker.service import broker_service
-from app.config.settings import settings
 from app.data.service import market_data_service
 from app.indicators.calculator import indicator_calculator
 from app.portfolio.models import Position, PortfolioSnapshot
+from app.scanner.scanner import MarketScanner
+from app.scanner.scoring import candidate_scorer
 from app.trading.engine import trading_engine
 
 
 class TradingCycle:
     """Execute one complete trading cycle."""
+
+    def __init__(self) -> None:
+        self._scanner = MarketScanner(
+            market_data=market_data_service,
+            indicator_calculator=indicator_calculator,
+            scorer=candidate_scorer,
+        )
 
     def run(self) -> None:
         """
@@ -27,8 +38,8 @@ class TradingCycle:
         The cycle:
         1. Reads the broker account.
         2. Reads current positions.
-        3. Obtains market data.
-        4. Calculates indicators.
+        3. Scans the configured universe.
+        4. Ranks eligible candidates.
         5. Evaluates the strategy.
         6. Applies risk controls.
         7. Sends permitted orders to the broker.
@@ -56,58 +67,44 @@ class TradingCycle:
             )
             return
 
-        for symbol in symbols:
-            self._process_symbol(
-                symbol=symbol,
+        end = datetime.now(timezone.utc)
+        start = end - timedelta(days=90)
+
+        candidates = self._scanner.scan(
+            symbols=symbols,
+            start=start,
+            end=end,
+        )
+
+        for candidate in candidates:
+            self._process_candidate(
+                candidate=candidate,
                 portfolio=portfolio,
             )
 
-    def _process_symbol(
+    def _process_candidate(
         self,
         *,
-        symbol: str,
+        candidate,
         portfolio: PortfolioSnapshot,
     ) -> None:
-        """Process one symbol."""
-
-        candles = market_data_service.get_candles(
-            symbols=[symbol],
-        )
-
-        symbol_candles = candles.get(symbol, [])
-
-        if not symbol_candles:
-            logger.debug(
-                "No candles available for {}.",
-                symbol,
-            )
-            return
-
-        snapshots = indicator_calculator.calculate(
-            symbol_candles
-        )
-
-        if not snapshots:
-            return
-
-        latest_candle = symbol_candles[-1]
-        latest_indicators = snapshots[-1]
+        """Process one ranked scanner candidate."""
 
         context = self._build_context(
-            symbol=symbol,
-            close=float(latest_candle.close),
-            indicators=latest_indicators,
+            symbol=candidate.symbol,
+            close=candidate.price,
+            indicators=candidate.indicators,
         )
 
         result = trading_engine.evaluate_and_execute(
             context=context,
             portfolio=portfolio,
-            sector=self._get_sector(symbol),
+            sector=self._get_sector(candidate.symbol),
         )
 
         logger.info(
             "Trading cycle result for {}: {} - {}",
-            symbol,
+            candidate.symbol,
             result.decision,
             result.reason,
         )
@@ -159,10 +156,9 @@ class TradingCycle:
     @staticmethod
     def _get_symbols() -> list[str]:
         """
-        Return the symbols to process.
+        Return the configured trading universe.
 
-        The scanner/universe integration will replace this temporary
-        configuration-driven source.
+        The S&P 500 universe integration will provide these symbols.
         """
 
         return []
@@ -172,7 +168,7 @@ class TradingCycle:
         """
         Return the sector for a symbol.
 
-        Sector metadata will later come from the scanner/universe layer.
+        Sector metadata will come from the universe layer.
         """
 
         del symbol
