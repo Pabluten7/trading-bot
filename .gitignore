@@ -1,0 +1,55 @@
+# Entorno
+.env
+.env.local
+.env.*.local
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.venv/
+venv/
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ruff_cache/
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+
+# Logs y datos
+logs/
+*.log
+data/
+*.csv
+*.parquet
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Alembic (no versionar migrations generadas automáticamente en CI)
+# backend/alembic/versions/*.py  ← comentado: sí queremos versionar migrations
+
+# macOS / Linux
+.DS_Store
+Thumbs.db
+
+# Docker
+*.dockerignore

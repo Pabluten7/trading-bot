@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "sprint/**", "feature/**", "fix/**"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install ruff==0.6.0
+
+      - name: Ruff check
+        run: ruff check backend/app backend/tests
+
+      - name: Ruff format check
+        run: ruff format --check backend/app backend/tests
+
+  test:
+    name: Tests
+    needs: lint
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: trading
+          POSTGRES_PASSWORD: trading
+          POSTGRES_DB: tradingbot_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://trading:trading@localhost:5432/tradingbot_test
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      ALPACA_API_KEY: PKTEST00000000000000000000
+      ALPACA_API_SECRET: SKTEST0000000000000000000000000000000000
+      TRADING_MODE: paper
+      APP_ENV: test
+      LOG_LEVEL: WARNING
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        working-directory: backend
+        run: uv pip install --system -e ".[dev]"
+
+      - name: Run migrations
+        working-directory: backend
+        run: alembic upgrade head
+
+      - name: Run tests
+        working-directory: backend
+        run: pytest --cov=app --cov-report=term-missing -v
