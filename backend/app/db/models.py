@@ -8,17 +8,20 @@ Reglas:
 """
 
 import enum
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     Enum,
     ForeignKey,
+    Integer,
     Numeric,
     String,
     UniqueConstraint,
@@ -78,6 +81,49 @@ class ExitReason(enum.StrEnum):
     TAKE_PROFIT = "take_profit"
     TRAILING_STOP = "trailing_stop"
     MANUAL = "manual"
+
+
+class UniverseMember(TimestampMixin, Base):
+    """Empresa del universo (componentes del S&P500). Si sale del índice se marca
+    inactiva en vez de borrarse, para conservar el histórico."""
+
+    __tablename__ = "universe_members"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ticker: Mapped[str] = mapped_column(String(10), unique=True)
+    name: Mapped[str] = mapped_column(String(200))
+    sector: Mapped[str] = mapped_column(String(60), index=True)
+    sub_industry: Mapped[str | None] = mapped_column(String(120))
+    added_to_index: Mapped[date | None] = mapped_column(Date)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Timeframe(enum.StrEnum):
+    D1 = "1D"
+    H4 = "4H"
+    H1 = "1H"
+
+
+class Candle(Base):
+    """Vela OHLCV. `timestamp` es el inicio de la vela, en UTC."""
+
+    __tablename__ = "candles"
+    __table_args__ = (
+        UniqueConstraint("ticker", "timeframe", "timestamp", name="uq_candle_ticker_tf_ts"),
+        CheckConstraint("high >= low", name="ck_candle_high_ge_low"),
+        CheckConstraint("volume >= 0", name="ck_candle_volume_nonneg"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True)
+    ticker: Mapped[str] = mapped_column(String(10))
+    timeframe: Mapped[Timeframe] = mapped_column(_enum(Timeframe))
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    open: Mapped[Decimal] = mapped_column(PRICE)
+    high: Mapped[Decimal] = mapped_column(PRICE)
+    low: Mapped[Decimal] = mapped_column(PRICE)
+    close: Mapped[Decimal] = mapped_column(PRICE)
+    volume: Mapped[int] = mapped_column(BigInteger)
 
 
 class Strategy(TimestampMixin, Base):
@@ -180,6 +226,7 @@ class Order(TimestampMixin, Base):
 
 __all__ = [
     "Base",
+    "Candle",
     "ExitReason",
     "Order",
     "OrderSide",
@@ -187,6 +234,8 @@ __all__ = [
     "OrderType",
     "Signal",
     "Strategy",
+    "Timeframe",
     "Trade",
     "TradeStatus",
+    "UniverseMember",
 ]

@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     alpaca_api_key: SecretStr = SecretStr("")
     alpaca_api_secret: SecretStr = SecretStr("")
     alpaca_paper: bool = True
+    # sip = todo el mercado (en plan gratis solo con datos de >15 min); iex = solo la bolsa IEX
+    alpaca_feed: Literal["sip", "iex"] = "sip"
+    alpaca_data_url: str = "https://data.alpaca.markets"
 
     @model_validator(mode="after")
     def _produccion_exige_postgres(self) -> "Settings":
