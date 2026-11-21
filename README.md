@@ -21,7 +21,16 @@ cd frontend && npm install
 npm run dev
 npm run lint && npm test
 ```
-Con Docker: `docker compose up --build`.
+Con Docker: `docker compose up --build` (levanta Postgres, aplica migraciones y arranca la API). Define `POSTGRES_PASSWORD` en `.env`.
+
+## Base de datos
+Sin Docker se usa SQLite (`DATABASE_URL=sqlite:///./trading_bot.db`). Con Docker, Postgres.
+```bash
+cd backend
+alembic upgrade head                              # aplicar migraciones
+alembic revision --autogenerate -m "descripcion"  # tras cambiar models.py
+```
+Hay un test que falla si cambias un modelo sin crear su migración.
 
 ## Flujo de trabajo
 Una rama por historia de usuario: `hu/HU-XX-nombre`, PR a `main`. Las tasks son commits dentro de la rama. Commits en formato Conventional Commits. El backlog vive en el Project de Claude (`backlog.md`).
