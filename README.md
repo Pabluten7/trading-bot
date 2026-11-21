@@ -32,6 +32,16 @@ alembic revision --autogenerate -m "descripcion"  # tras cambiar models.py
 ```
 Hay un test que falla si cambias un modelo sin crear su migración.
 
+## Datos de mercado (Alpaca)
+Necesitas `ALPACA_API_KEY` y `ALPACA_API_SECRET` en `.env` (cuenta paper gratuita).
+```bash
+cd backend
+python -m app.market_data sync --tickers AAPL,MSFT      # unas pocas, para probar
+python -m app.market_data sync --universe --limit 20    # 20 del S&P500
+python -m app.market_data sync --universe               # todo el S&P500 (1D, 4H, 1H)
+```
+La sincronización es incremental: la segunda vez solo descarga lo que falta. El plan gratuito de Alpaca admite 200 peticiones/min y no permite pedir los últimos 15 min del feed `sip`; ambos casos están controlados.
+
 ## Universo S&P500
 ```bash
 cd backend
