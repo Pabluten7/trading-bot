@@ -115,3 +115,16 @@ def load_candles(
     if end:
         q = q.where(Candle.timestamp <= end)
     return list(session.scalars(q.order_by(Candle.timestamp)))
+
+
+def recent_candles(
+    session: Session, ticker: str, timeframe: Timeframe, end: datetime, limit: int
+) -> list[Candle]:
+    """Las `limit` velas más recientes con inicio <= end, en orden cronológico."""
+    rows = session.scalars(
+        select(Candle)
+        .where(Candle.ticker == ticker, Candle.timeframe == timeframe, Candle.timestamp <= end)
+        .order_by(Candle.timestamp.desc())
+        .limit(limit)
+    )
+    return list(reversed(list(rows)))
