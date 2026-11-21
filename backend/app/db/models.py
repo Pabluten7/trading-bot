@@ -8,7 +8,7 @@ Reglas:
 """
 
 import enum
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -16,6 +16,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     Enum,
     ForeignKey,
@@ -78,6 +79,22 @@ class ExitReason(enum.StrEnum):
     TAKE_PROFIT = "take_profit"
     TRAILING_STOP = "trailing_stop"
     MANUAL = "manual"
+
+
+class UniverseMember(TimestampMixin, Base):
+    """Empresa del universo (componentes del S&P500). Si sale del índice se marca
+    inactiva en vez de borrarse, para conservar el histórico."""
+
+    __tablename__ = "universe_members"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ticker: Mapped[str] = mapped_column(String(10), unique=True)
+    name: Mapped[str] = mapped_column(String(200))
+    sector: Mapped[str] = mapped_column(String(60), index=True)
+    sub_industry: Mapped[str | None] = mapped_column(String(120))
+    added_to_index: Mapped[date | None] = mapped_column(Date)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Strategy(TimestampMixin, Base):
@@ -189,4 +206,5 @@ __all__ = [
     "Strategy",
     "Trade",
     "TradeStatus",
+    "UniverseMember",
 ]

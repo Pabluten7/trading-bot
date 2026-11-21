@@ -32,6 +32,14 @@ alembic revision --autogenerate -m "descripcion"  # tras cambiar models.py
 ```
 Hay un test que falla si cambias un modelo sin crear su migración.
 
+## Universo S&P500
+```bash
+cd backend
+python -m app.universe sync          # carga la lista incluida en el repo (sin internet)
+python -m app.universe sync --url    # actualiza desde la lista pública actual
+```
+Las empresas que salen del índice se marcan inactivas (no se borran) para conservar el histórico.
+
 ## Flujo de trabajo
 Una rama por historia de usuario: `hu/HU-XX-nombre`, PR a `main`. Las tasks son commits dentro de la rama. Commits en formato Conventional Commits. El backlog vive en el Project de Claude (`backlog.md`).
 
